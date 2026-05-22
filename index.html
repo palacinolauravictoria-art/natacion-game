@@ -2,37 +2,41 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=2436, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🏊‍♀️ Carrera de Natación</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
   html, body {
-    width: 300px; height: 600px;
+    width: 100%; height: 100%;
     overflow: hidden;
     background: #1a0d24;
     font-family: system-ui, -apple-system, sans-serif;
+    display: flex; align-items: center; justify-content: center;
   }
   #game-wrap {
     position: relative;
-    width: 2436px; height: 1125px;
+    width: 812px; height: 375px;
     overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 8px 60px rgba(89,47,112,0.6);
   }
-  canvas { display: block; position: absolute; top: 0; left: 0; }
+  canvas { display: block; position: absolute; top: 0; left: 0; width: 812px; height: 375px; }
  
   #overlay {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     background: rgba(20, 8, 32, 0.93);
-    color: #fff; text-align: center; padding: 60px;
+    color: #fff; text-align: center; padding: 24px;
+    border-radius: 16px;
   }
-  .ov-icon { font-size: 120px; margin-bottom: 24px; line-height: 1; }
-  #overlay h1 { font-size: 80px; font-weight: 700; color: #e9c43b; margin-bottom: 24px; letter-spacing: .01em; }
-  #overlay p  { font-size: 42px; color: #c4b8d8; margin-bottom: 60px; max-width: 1400px; line-height: 1.7; }
+  .ov-icon { font-size: 40px; margin-bottom: 8px; line-height: 1; }
+  #overlay h1 { font-size: 26px; font-weight: 700; color: #e9c43b; margin-bottom: 8px; }
+  #overlay p  { font-size: 14px; color: #c4b8d8; margin-bottom: 20px; max-width: 560px; line-height: 1.65; }
   #overlay button {
-    background: #592f70; color: #e9c43b; border: 5px solid #e9c43b;
-    padding: 38px 130px; border-radius: 999px;
-    font-size: 52px; font-weight: 700; cursor: pointer; letter-spacing: .03em;
+    background: #592f70; color: #e9c43b; border: 2px solid #e9c43b;
+    padding: 12px 44px; border-radius: 999px;
+    font-size: 18px; font-weight: 700; cursor: pointer; letter-spacing: .03em;
   }
   #overlay button:active { transform: scale(0.97); }
   #overlay.hidden { display: none; }
@@ -40,17 +44,17 @@
   #score-bar {
     position: absolute; top: 0; left: 0; right: 0; z-index: 10;
     display: flex; justify-content: space-between; align-items: center;
-    padding: 18px 60px;
+    padding: 6px 22px;
     background: rgba(89,47,112,0.92);
-    font-size: 38px; font-weight: 600; letter-spacing: .02em;
+    font-size: 13px; font-weight: 600; letter-spacing: .02em;
   }
-  #score-bar .lbl { color: #c4b8d8; font-weight: 400; margin-right: 10px; }
+  #score-bar .lbl { color: #c4b8d8; font-weight: 400; margin-right: 4px; }
   #score-bar .val { color: #e9c43b; }
 </style>
 </head>
 <body>
 <div id="game-wrap">
-  <canvas id="c" width="2436" height="1125"></canvas>
+  <canvas id="c" width="812" height="375"></canvas>
   <div id="score-bar">
     <div><span class="lbl">Récord</span><span class="val" id="best">--</span></div>
     <div><span class="lbl">Tiempo</span><span class="val" id="cur">0.0s</span></div>
@@ -71,15 +75,13 @@
   const bestEl  = document.getElementById('best');
   const curEl   = document.getElementById('cur');
  
-  // Fixed canvas resolution — iPhone X landscape
-  const W = 2436, H = 1125;
+  const W = 812, H = 375;
   const LANES = 5, PL = 2;
  
-  // Layout
-  const TOP     = 110;   // header bar height
-  const BOTTOM  = 80;    // footer bar height
-  const POOL_H  = H - TOP - BOTTOM;
-  const LANE_H  = POOL_H / LANES;  // ≈ 187px per lane
+  const TOP    = 36;
+  const BOTTOM = 26;
+  const POOL_H = H - TOP - BOTTOM;
+  const LANE_H = POOL_H / LANES;
   const SX = 0.04, FX = 0.96;
  
   // ── Palette ──────────────────────────────────────────────────────────────
@@ -99,7 +101,6 @@
   let startTime = 0, elapsed = 0, bestTime = null, animId = null;
   let swimmers = [], tapEnergy = 0, lastTap = 0;
  
-  // ── Bot personalities — slow & highly varied ──────────────────────────────
   function makeBotProfile(bi) {
     const profiles = [
       { spd:.00009, acc:.0000012, max:.00020, minSpd:.00005, decP:.0008, decDur:900,  burstP:.0012, burstMag:.00009 },
@@ -117,8 +118,7 @@
       decDur:   d.decDur  + (Math.random()*400 - 200),
       burstP:   d.burstP,
       burstMag: d.burstMag,
-      phase:    'normal',
-      phaseTimer: 0,
+      phase: 'normal', phaseTimer: 0,
     };
   }
  
@@ -143,50 +143,45 @@
  
   // ── Draw ──────────────────────────────────────────────────────────────────
   function drawPool() {
-    // Water lanes
     for (let i = 0; i < LANES; i++) {
       ctx.fillStyle = WATER[i];
       ctx.fillRect(0, TOP + i * LANE_H, W, LANE_H);
     }
-    // Shimmer lines
-    ctx.save(); ctx.globalAlpha = .055; ctx.strokeStyle = P.lila2; ctx.lineWidth = 3;
+    // shimmer
+    ctx.save(); ctx.globalAlpha = .055; ctx.strokeStyle = P.lila2; ctx.lineWidth = 1;
     for (let i = 0; i < LANES; i++) {
-      for (let k = 0; k < 4; k++) {
-        const y = TOP + i * LANE_H + 28 + k * 40;
+      for (let k = 0; k < 3; k++) {
+        const y = TOP + i * LANE_H + 8 + k * 16;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
       }
     }
     ctx.restore();
-    // Lane ropes
-    ctx.setLineDash([14, 18]); ctx.strokeStyle = P.lila; ctx.lineWidth = 5; ctx.globalAlpha = .5;
+    // lane ropes
+    ctx.setLineDash([5, 7]); ctx.strokeStyle = P.lila; ctx.lineWidth = 1.5; ctx.globalAlpha = .5;
     for (let i = 1; i < LANES; i++) {
       const y = TOP + i * LANE_H;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
     ctx.setLineDash([]); ctx.globalAlpha = 1;
-    // Header bar
+    // header & footer
     ctx.fillStyle = P.purple; ctx.fillRect(0, 0, W, TOP);
-    // Footer bar
-    ctx.fillStyle = P.dark; ctx.fillRect(0, TOP + POOL_H, W, BOTTOM);
-    // Start wall
-    ctx.fillStyle = P.lila; ctx.fillRect(0, TOP, 26, POOL_H);
-    // Finish checkered
-    const fx = Math.round(FX * W), sq = 26;
+    ctx.fillStyle = P.dark;   ctx.fillRect(0, TOP + POOL_H, W, BOTTOM);
+    // start wall
+    ctx.fillStyle = P.lila; ctx.fillRect(0, TOP, 8, POOL_H);
+    // finish checkered
+    const fx = Math.round(FX * W), sq = 9;
     for (let i = 0; i < POOL_H; i += sq) {
       ctx.fillStyle = Math.floor(i / sq) % 2 === 0 ? P.yellow : P.purple;
-      ctx.fillRect(fx, TOP + i, 18, sq);
+      ctx.fillRect(fx, TOP + i, 6, sq);
     }
-    // Labels
+    // labels
     ctx.textAlign = 'center';
-    ctx.font = 'bold 28px system-ui'; ctx.fillStyle = P.yellow;
-    ctx.fillText('META', fx + 9, TOP - 18);
-    ctx.font = 'bold 40px system-ui'; ctx.fillStyle = P.yellow;
-    ctx.fillText('🏊‍♀️  CARRERA DE NATACIÓN', W / 2, TOP - 14);
-    // Lane numbers
+    ctx.font = 'bold 9px system-ui';  ctx.fillStyle = P.yellow; ctx.fillText('META', fx + 3, TOP - 5);
+    ctx.font = 'bold 13px system-ui'; ctx.fillStyle = P.yellow; ctx.fillText('🏊‍♀️  CARRERA DE NATACIÓN', W / 2, TOP - 5);
     for (let i = 0; i < LANES; i++) {
       ctx.fillStyle = i === PL ? P.lime2 : 'rgba(255,255,255,.22)';
-      ctx.font = `bold 36px system-ui`; ctx.textAlign = 'left';
-      ctx.fillText(i + 1, 36, ly(i) + 13);
+      ctx.font = '11px system-ui'; ctx.textAlign = 'left';
+      ctx.fillText(i + 1, 12, ly(i) + 4);
     }
   }
  
@@ -197,84 +192,77 @@
   function drawSwimmer(sw) {
     const x = sw.pos * (FX - SX) * W + SX * W;
     const y = ly(sw.lane);
-    const SC = 5.5; // scale factor vs original 16px body radius
  
     ctx.save(); ctx.translate(x, y);
  
-    // Wake ripples
-    ctx.globalAlpha = .2; ctx.strokeStyle = sw.ip ? P.lime2 : P.lila2; ctx.lineWidth = 2.5;
-    for (let r = 1; r <= 4; r++) {
-      ctx.beginPath();
-      ctx.ellipse(-r * 28, 0, r * 16, 10, 0, 0, Math.PI*2);
-      ctx.stroke();
+    // wake
+    ctx.globalAlpha = .2; ctx.strokeStyle = sw.ip ? P.lime2 : P.lila2; ctx.lineWidth = 1;
+    for (let r = 1; r <= 3; r++) {
+      ctx.beginPath(); ctx.ellipse(-r*9, 0, r*5, 3, 0, 0, Math.PI*2); ctx.stroke();
     }
     ctx.globalAlpha = 1;
  
-    // Body
-    ctx.beginPath(); ctx.ellipse(0, 0, 16*SC, 8*SC, 0, 0, Math.PI*2);
+    // body
+    ctx.beginPath(); ctx.ellipse(0, 0, 15, 7, 0, 0, Math.PI*2);
     ctx.fillStyle = sw.col; ctx.fill();
-    ctx.strokeStyle = sw.ip ? P.lime2 : lighten(sw.col, 40);
-    ctx.lineWidth = 5; ctx.stroke();
+    ctx.strokeStyle = sw.ip ? P.lime2 : lighten(sw.col, 40); ctx.lineWidth = 1.5; ctx.stroke();
  
-    // Head / cap
-    ctx.beginPath(); ctx.arc(14*SC, -2*SC, 8*SC, 0, Math.PI*2);
+    // head/cap
+    ctx.beginPath(); ctx.arc(13, -2, 7, 0, Math.PI*2);
     ctx.fillStyle = sw.cap; ctx.fill();
-    // cap shine
-    ctx.beginPath(); ctx.arc(12*SC, -5*SC, 2.5*SC, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(11, -5, 2.2, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fill();
  
-    // Goggles
-    ctx.beginPath(); ctx.arc(18*SC, -2*SC, 3.5*SC, 0, Math.PI*2);
+    // goggles
+    ctx.beginPath(); ctx.arc(17, -2, 3.2, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(190,225,255,.88)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(18*SC, -2*SC, 1.8*SC, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(17, -2, 1.6, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(80,140,200,.45)'; ctx.fill();
  
-    // Arms
-    const a1 = Math.sin(sw.ph)*12*SC, a2 = Math.sin(sw.ph+Math.PI)*12*SC;
-    ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.strokeStyle = sw.col;
-    ctx.beginPath(); ctx.moveTo(2*SC, 2*SC);  ctx.lineTo(a1>0?14*SC:-9*SC, a1); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(2*SC, -2*SC); ctx.lineTo(a2>0?14*SC:-9*SC, a2); ctx.stroke();
+    // arms
+    const a1 = Math.sin(sw.ph)*11, a2 = Math.sin(sw.ph+Math.PI)*11;
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = sw.col;
+    ctx.beginPath(); ctx.moveTo(2, 2);  ctx.lineTo(a1>0?13:-8, a1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2,-2); ctx.lineTo(a2>0?13:-8, a2); ctx.stroke();
  
-    // Splash (player)
+    // splash
     if (sw.ip && tapEnergy > .07) {
       ctx.globalAlpha = Math.min(tapEnergy*.8, .7);
-      for (let j = 0; j < 10; j++) {
-        const ang = Math.PI+(Math.random()-.5)*1.8, dist = (12+Math.random()*22)*SC*.6;
+      for (let j = 0; j < 8; j++) {
+        const ang = Math.PI+(Math.random()-.5)*1.8, dist = 11+Math.random()*17;
         ctx.fillStyle = j%2===0 ? P.lila2 : P.yellow2;
-        ctx.beginPath();
-        ctx.arc(Math.cos(ang)*dist, Math.sin(ang)*dist, (2+Math.random()*3)*SC*.5, 0, Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(Math.cos(ang)*dist, Math.sin(ang)*dist, 1.5+Math.random()*2.5, 0, Math.PI*2); ctx.fill();
       }
       ctx.globalAlpha = 1;
     }
  
-    // Slow phase indicator
+    // slow indicator
     if (!sw.ip && sw.phase === 'slow') {
-      ctx.fillStyle = 'rgba(168,172,219,.75)';
-      ctx.font = 'bold 30px system-ui'; ctx.textAlign = 'center';
-      ctx.fillText('z z', 0, -55);
+      ctx.fillStyle = 'rgba(168,172,219,.7)';
+      ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('z z', 0, -18);
     }
- 
-    // Label
-    ctx.font = `bold 34px system-ui`; ctx.textAlign = 'center';
-    ctx.fillStyle = sw.ip ? P.lime2 : 'rgba(255,255,255,.0)';
-    if (sw.ip) ctx.fillText('TÚ', 0, -58);
+    // player label
+    if (sw.ip) {
+      ctx.fillStyle = P.lime2; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('TÚ', 0, -17);
+    }
  
     ctx.restore();
   }
  
   function drawMeter() {
-    const bx = 60, by = H - 58, bw = W - 120, bh = 26;
+    const bx = 20, by = H - 18, bw = W - 40, bh = 7;
     ctx.fillStyle = 'rgba(89,47,112,.55)';
-    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 13); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.fill();
     if (tapEnergy > 0) {
       const g = ctx.createLinearGradient(bx, 0, bx+bw, 0);
       g.addColorStop(0, P.lime); g.addColorStop(.5, P.yellow); g.addColorStop(1, P.lila);
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.roundRect(bx, by, tapEnergy*bw, bh, 13); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(bx, by, tapEnergy*bw, bh, 4); ctx.fill();
     }
-    ctx.fillStyle = 'rgba(196,184,216,.55)'; ctx.font = '28px system-ui'; ctx.textAlign = 'left';
-    ctx.fillText('VELOCIDAD', bx, by - 10);
+    ctx.fillStyle = 'rgba(196,184,216,.5)'; ctx.font = '8px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText('VELOCIDAD', bx, by - 3);
   }
  
   // ── Game loop ─────────────────────────────────────────────────────────────
@@ -290,19 +278,17 @@
       sw.phaseTimer = Math.max(0, sw.phaseTimer - dt);
       if (sw.phaseTimer <= 0) {
         const r = Math.random();
-        if (sw.phase !== 'slow'  && r < sw.decP   * dt) { sw.phase = 'slow';   sw.phaseTimer = sw.decDur + (Math.random()*500-250); }
-        else if (sw.phase !== 'burst' && r < sw.burstP * dt) { sw.phase = 'burst';  sw.phaseTimer = 300 + Math.random()*400; }
-        else if (sw.phase !== 'normal') { sw.phase = 'normal'; sw.phaseTimer = 500 + Math.random()*800; }
+        if (sw.phase !== 'slow'  && r < sw.decP   * dt) { sw.phase='slow';   sw.phaseTimer=sw.decDur+(Math.random()*500-250); }
+        else if (sw.phase !== 'burst' && r < sw.burstP * dt) { sw.phase='burst';  sw.phaseTimer=300+Math.random()*400; }
+        else if (sw.phase !== 'normal') { sw.phase='normal'; sw.phaseTimer=500+Math.random()*800; }
       }
-      const targetSpd = sw.phase==='slow' ? sw.minSpd : sw.phase==='burst' ? sw.max+sw.burstMag : sw.max*0.65;
-      const lr = sw.phase==='slow' ? .003 : .002;
-      sw.spd += (targetSpd - sw.spd) * lr * dt;
+      const tgt = sw.phase==='slow' ? sw.minSpd : sw.phase==='burst' ? sw.max+sw.burstMag : sw.max*0.65;
+      sw.spd += (tgt - sw.spd) * (sw.phase==='slow'?.003:.002) * dt;
       sw.pos += sw.spd * dt;
       sw.ph  += sw.spd * dt * 65;
       if (sw.pos >= 1) { sw.pos = 1; sw.fin = true; }
     }
  
-    // Player
     tapEnergy = Math.max(0, tapEnergy - .0022 * dt);
     const ps = tapEnergy * .0017, pl = swimmers[PL];
     if (!pl.fin) { pl.pos = Math.min(1, pl.pos + ps * dt); pl.ph += ps * dt * 55; }
@@ -317,7 +303,6 @@
     animId = requestAnimationFrame(loop);
   }
  
-  // ── End screen ────────────────────────────────────────────────────────────
   function endGame(won) {
     state = won ? 'win' : 'lose';
     cancelAnimationFrame(animId);
@@ -351,8 +336,7 @@
  
   function staticDraw() {
     initSwimmers(); ctx.clearRect(0,0,W,H); drawPool();
-    for (const sw of swimmers) drawSwimmer(sw);
-    drawMeter();
+    for (const sw of swimmers) drawSwimmer(sw); drawMeter();
   }
   staticDraw();
 })();
